@@ -1,11 +1,8 @@
 #include <SDL3/SDL.h>
+#include <vector>
 
 typedef struct Cell {
-    int x;
-    int y;
-    int x2;
-    int y2;
-    bool state;
+    bool state = false;
 } Cell;
 
 class Grid {
@@ -16,11 +13,18 @@ public:
 
     void draw(SDL_Renderer *renderer, int windowWidth, int windowHeight) const;
 
+    inline Cell &getCell(int colIndex, int rowIndex);
+
+    inline const Cell &getCell(int colIndex, int rowIndex) const;
+
+
     void setState(float x, float y, bool state);
 
 private:
-    int col;
-    int row;
+    int columns;
+    int rows;
     int cellSize;
-    Cell **cells;
+    std::vector<Cell> cells;
+
+
 };
