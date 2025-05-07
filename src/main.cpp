@@ -4,7 +4,7 @@
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_mouse.h>
 #include <grid.h>
-#include <cstdio>
+#include <textureManager.h>
 
 static SDL_Window *window = nullptr;
 static SDL_Renderer *renderer = nullptr;
@@ -32,7 +32,10 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
     int row = WINDOW_HEIGHT / CELL_SIZE;
 
     AppState *state = new AppState;
-    state->grid = new Grid(col, row, CELL_SIZE);
+
+    SDL_Texture *spriteSheet = TextureManager::getInstance()->loadTexture(renderer, "assets/allSprites_retina.png");
+
+    state->grid = new Grid(col, row, CELL_SIZE, spriteSheet);
 
     *appstate = state;
 
@@ -57,10 +60,11 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     Uint32 mouseButton = SDL_GetMouseState(&mouseX, &mouseY);
 
     if (mouseButton == SDL_BUTTON_LEFT) {
-        state->grid->setState(mouseX, mouseY, true);
+        // state->grid->setHighlight(mouseX, mouseY, true);
+        state->grid->setType(mouseX, mouseY, TileType::SAND);
     }
     if (mouseButton == SDL_BUTTON_X1) {
-        state->grid->setState(mouseX, mouseY, false);
+        state->grid->setHighlight(mouseX, mouseY, false);
     }
 
 
