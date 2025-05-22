@@ -3,19 +3,20 @@
 
 #include "textureManager.h"
 
-typedef struct TileProperties {
+typedef struct TileProperties
+{
     SDL_FRect spriteClip;
     bool walkable;
 } TileProperties;
 
-enum class TileType {
-    TREE,
-    GRASS,
-    SAND,
-    EMPTY
+enum class TileType
+{
+    FLOOR,
+    WALL
 };
 
-class Tile {
+class Tile
+{
 public:
     Tile(TileType type);
 
@@ -29,9 +30,11 @@ public:
 
     void setHighlight(bool show);
 
-    void setTexture(SDL_Texture *texture);
+    void setTexture(SDL_Texture* texture);
 
-    void render(SDL_Renderer *renderer, SDL_Texture *spriteSheet, TileType type, int x, int y, int size) const;
+    bool isWalkable() const;
+
+    void render(SDL_Renderer* renderer, SDL_Texture* spriteSheet, TileType type, int x, int y, int size) const;
 
 private:
     TileType type;

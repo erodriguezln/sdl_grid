@@ -5,33 +5,40 @@
 #include <vector>
 #include <tile.h>
 
-
-class Grid {
+class Grid
+{
 public:
-    Grid(int col, int row, int tileSize, SDL_Texture *spriteSheet);
+    Grid(int col, int row, int tileSize, SDL_Texture* spriteSheet);
 
     ~Grid();
 
-    void draw(SDL_Renderer *renderer, int windowWidth, int windowHeight) const;
+    void draw(SDL_Renderer* renderer, int windowWidth, int windowHeight) const;
 
-    Tile const &getTile(float x, float y) const;
+    Tile const& getTile(int x, int y) const;
 
-    Tile &getTile(float x, float y);
+    Tile& getTile(int x, int y);
 
-    void drawGrid(SDL_Renderer *renderer, int windowWidth, int windowHeight) const;
+    // TODO es necesario retornarlo como referencia? o puedo modificar con g&s ?
+    std::vector<std::vector<Tile>>& getTiles();
+
+    void drawGrid(SDL_Renderer* renderer, int windowWidth, int windowHeight) const;
 
     void setHighlight(float x, float y, bool state);
 
     void setType(float x, float y, TileType type);
 
-    SDL_Texture *getSpriteSheet() const;
+    bool isWalkable(int x, int y) const;
+
+    SDL_Texture* getSpriteSheet() const;
+
+    int convertCoordinateToIndex(float coordinate) const;
 
 private:
     int columns;
     int rows;
     int tileSize;
-    std::vector<Tile> tiles;
-    SDL_Texture *spriteSheet;
+    std::vector<std::vector<Tile>> tiles;
+    SDL_Texture* spriteSheet;
 };
 
 #endif
