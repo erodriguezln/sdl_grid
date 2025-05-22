@@ -29,6 +29,8 @@ public:
 
     bool isWalkable(int x, int y) const;
 
+    void showGrid();
+
     SDL_Texture* getSpriteSheet() const;
 
     int convertCoordinateToIndex(float coordinate) const;
@@ -37,6 +39,7 @@ private:
     int columns;
     int rows;
     int tileSize;
+    bool displayGrid;
     std::vector<std::vector<Tile>> tiles;
     SDL_Texture* spriteSheet;
 };

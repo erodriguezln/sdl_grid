@@ -1,7 +1,4 @@
-#include <algorithm>
-#include <vector>
-#include <queue>
-#include <SDL3/SDL_rect.h>
+#include <bfs.h>
 
 bool operator==(const SDL_Point& a, const SDL_Point& b)
 {
@@ -13,7 +10,7 @@ bool operator!=(const SDL_Point& a, const SDL_Point& b)
     return a.x != b.x || a.y != b.y;
 }
 
-std::vector<SDL_Point> getAdjacents(SDL_Point root, const std::vector<std::vector<int>>& matrix)
+std::vector<SDL_Point> getAdjacent(SDL_Point root, const std::vector<std::vector<int>>& matrix)
 {
     std::vector<SDL_Point> adjacents;
     if (root.y - 1 >= 0 && matrix[root.x][root.y - 1])
@@ -59,8 +56,8 @@ std::vector<SDL_Point> recreatePath(const std::vector<std::vector<SDL_Point>>& p
 
 std::vector<SDL_Point> bfs(
     const std::vector<std::vector<int>>& matrix,
-    const SDL_Point start = {0, 0},
-    const SDL_Point end = {19, 19})
+    const SDL_Point start,
+    const SDL_Point end)
 {
     std::vector<std::vector<bool>> visited(matrix.size(), std::vector<bool>(matrix[0].size(), false));
 
@@ -80,7 +77,7 @@ std::vector<SDL_Point> bfs(
             return recreatePath(parents, start, end);
         }
 
-        std::vector<SDL_Point> adjacents = getAdjacents(v, matrix);
+        std::vector<SDL_Point> adjacents = getAdjacent(v, matrix);
         for (const SDL_Point& coord : adjacents)
         {
             if (!visited[coord.x][coord.y])
@@ -92,4 +89,5 @@ std::vector<SDL_Point> bfs(
             }
         }
     }
+    return {};
 }

@@ -8,7 +8,8 @@ Grid::Grid(int col, int row, int tileSize, SDL_Texture* spriteSheet) :
     rows(row),
     tileSize(tileSize),
     spriteSheet(spriteSheet),
-    tiles(row, std::vector<Tile>(col, Tile(TileType::FLOOR)))
+    tiles(row, std::vector<Tile>(col, Tile(TileType::FLOOR))),
+    displayGrid(false)
 {
 }
 
@@ -57,11 +58,13 @@ void Grid::draw(SDL_Renderer* renderer, int windowWidth, int windowHeight) const
         {
             Tile const& tile = getTile(i, j);
             tile.render(renderer, spriteSheet, tiles[i][j].getType(), i * tileSize, j * tileSize, tileSize);
-            isWalkable(i, j);
         }
     }
 
-    drawGrid(renderer, windowWidth, windowHeight);
+    if (displayGrid)
+    {
+        drawGrid(renderer, windowWidth, windowHeight);
+    }
 }
 
 void Grid::setHighlight(float x, float y, bool state)
@@ -84,6 +87,11 @@ bool Grid::isWalkable(int x, int y) const
     Tile tile = getTile(convertCoordinateToIndex(x), convertCoordinateToIndex(y));
     // std::cout << x << ", " << y << tile.isWalkable() << std::endl;
     return tile.isWalkable();
+}
+
+void Grid::showGrid()
+{
+    displayGrid = !displayGrid;
 }
 
 SDL_Texture* Grid::getSpriteSheet() const

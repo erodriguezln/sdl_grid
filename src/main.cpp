@@ -6,7 +6,7 @@
 #include <grid.h>
 #include <iostream>
 #include <textureManager.h>
-#include "bfs.cpp"
+#include <bfs.h>
 
 static SDL_Window* window = nullptr;
 static SDL_Renderer* renderer = nullptr;
@@ -48,7 +48,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
 
     *appstate = state;
 
-    std::vector<std::vector<int>> binaryMatrix(row, std::vector<int>(col, 0));
+    const std::vector<std::vector<int>> binaryMatrix(row, std::vector<int>(col, 0));
     state->binaryMatrix = binaryMatrix;
 
 
@@ -57,9 +57,41 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
 
 SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event)
 {
+    AppState* state = (AppState*)appstate;
+
     if (event->type == SDL_EVENT_QUIT)
     {
         return SDL_APP_SUCCESS;
+    }
+
+    if (event->type == SDL_EVENT_KEY_DOWN && event->key.repeat == 0)
+    {
+        if (event->key.scancode == SDL_SCANCODE_G)
+        {
+            state->grid->showGrid();
+        }
+    }
+    if (event->type == SDL_EVENT_KEY_DOWN && event->key.repeat == 0)
+    {
+        if (event->key.scancode == SDL_SCANCODE_X)
+        {
+            const std::vector<std::vector<Tile>> test = state->grid->getTiles();
+            for (int i = 0; i < test.size(); i++)
+            {
+                for (int j = 0; j < test[i].size(); j++)
+                {
+                    bool walkable = test[i][j].isWalkable();
+                    state->binaryMatrix[i][j] = walkable ? 1 : 0;
+                    state->grid->setHighlight(i, j, false);
+                }
+            }
+            std::vector<SDL_Point> path = bfs(state->binaryMatrix);
+
+            for (int i = 0; i < path.size(); i++)
+            {
+                state->grid->setHighlight(path[i].x, path[i].y, true);
+            }
+        }
     }
 
     return SDL_APP_CONTINUE;
@@ -78,35 +110,19 @@ SDL_AppResult SDL_AppIterate(void* appstate)
 
     if (mouseButton == SDL_BUTTON_LEFT)
     {
-        state->grid->setType(mouseX, mouseY, TileType::WALL);
+        if (mouseX < WINDOW_WIDTH && mouseX > 0 && mouseY < WINDOW_HEIGHT && mouseY > 0)
+        {
+            // std::cout << "Mouse X: " << mouseX << " Mouse Y: " << mouseY << std::endl;
+            state->grid->setType(mouseX, mouseY, TileType::WALL);
+        }
     }
     if (mouseButton == SDL_BUTTON_X1)
     {
-        state->grid->setType(mouseX, mouseY, TileType::FLOOR);
-    }
-    // TODO por que no funciona luego del primer intento
-    if (keys[SDL_SCANCODE_X])
-    {
-        std::vector<std::vector<Tile>> test = state->grid->getTiles();
-        for (int i = 0; i < test.size(); i++)
+        if (mouseX < WINDOW_WIDTH && mouseX > 0 && mouseY < WINDOW_HEIGHT && mouseY > 0)
         {
-            for (int j = 0; j < test[i].size(); j++)
-            {
-                if (test[i][j].isWalkable())
-                {
-                    state->binaryMatrix[i][j] = 1;
-                }
-            }
+            state->grid->setType(mouseX, mouseY, TileType::FLOOR);
         }
-        std::vector<SDL_Point> path = bfs(state->binaryMatrix);
-
-        for (int i = 0; i < path.size(); i++)
-        {
-            state->grid->setHighlight(path[i].x, path[i].y, true);
-        }
-
     }
-
 
     state->grid->draw(renderer, WINDOW_WIDTH, WINDOW_HEIGHT);
 
