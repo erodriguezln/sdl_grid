@@ -12,7 +12,13 @@ typedef struct TileProperties
 enum class TileType
 {
     FLOOR,
-    WALL
+    WALL,
+};
+
+enum class SpriteType
+{
+    TREE,
+    NONE
 };
 
 class Tile
@@ -24,7 +30,11 @@ public:
 
     TileType getType() const;
 
+    SpriteType getSpriteType() const;
+
     void setType(TileType type);
+
+    void setSpriteType(SpriteType type);
 
     bool getHighlight() const;
 
@@ -35,9 +45,11 @@ public:
     bool isWalkable() const;
 
     void render(SDL_Renderer* renderer, SDL_Texture* spriteSheet, TileType type, int x, int y, int size) const;
+    void renderSprite(SDL_Renderer* renderer, SDL_Texture* spriteSheet, SpriteType type, int x, int y, int size) const;
 
 private:
     TileType type;
+    SpriteType spriteType;
     bool highlight;
 };
 

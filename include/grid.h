@@ -18,14 +18,15 @@ public:
 
     Tile& getTile(int x, int y);
 
-    // TODO es necesario retornarlo como referencia? o puedo modificar con g&s ?
-    std::vector<std::vector<Tile>>& getTiles();
+    std::vector<std::vector<Tile>> getTiles();
 
     void drawGrid(SDL_Renderer* renderer, int windowWidth, int windowHeight) const;
 
     void setHighlight(float x, float y, bool state);
 
     void setType(float x, float y, TileType type);
+
+    void setSpriteType(float x, float y, SpriteType type);
 
     bool isWalkable(int x, int y) const;
 
@@ -34,6 +35,9 @@ public:
     SDL_Texture* getSpriteSheet() const;
 
     int convertCoordinateToIndex(float coordinate) const;
+    SDL_Point convertCoordinateToIndex(float x, float y) const;
+
+    void cleanHighlights();
 
 private:
     int columns;

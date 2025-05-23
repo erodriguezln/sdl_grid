@@ -19,6 +19,7 @@ typedef struct AppState
 {
     Grid* grid;
     std::vector<std::vector<int>> binaryMatrix;
+    bool trackMouse = false;
 } AppState;
 
 SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
@@ -66,6 +67,24 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event)
 
     if (event->type == SDL_EVENT_KEY_DOWN && event->key.repeat == 0)
     {
+        if (event->key.scancode == SDL_SCANCODE_ESCAPE)
+        {
+            // TODO Check if this is correct and if its running all the memory cleaning
+            return SDL_APP_SUCCESS;
+        }
+    }
+
+    if (event->type == SDL_EVENT_KEY_DOWN && event->key.repeat == 0)
+    {
+        if (event->key.scancode == SDL_SCANCODE_T)
+        {
+            state->trackMouse = !state->trackMouse;
+            state->grid->cleanHighlights();
+        }
+    }
+
+    if (event->type == SDL_EVENT_KEY_DOWN && event->key.repeat == 0)
+    {
         if (event->key.scancode == SDL_SCANCODE_G)
         {
             state->grid->showGrid();
@@ -82,9 +101,9 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event)
                 {
                     bool walkable = test[i][j].isWalkable();
                     state->binaryMatrix[i][j] = walkable ? 1 : 0;
-                    state->grid->setHighlight(i, j, false);
                 }
             }
+            state->grid->cleanHighlights();
             std::vector<SDL_Point> path = bfs(state->binaryMatrix);
 
             for (int i = 0; i < path.size(); i++)
@@ -95,6 +114,28 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event)
     }
 
     return SDL_APP_CONTINUE;
+}
+
+
+void do_work(AppState* state, const float x, const float y)
+{
+    const std::vector<std::vector<Tile>> test = state->grid->getTiles();
+    for (int i = 0; i < test.size(); i++)
+    {
+        for (int j = 0; j < test[i].size(); j++)
+        {
+            bool walkable = test[i][j].isWalkable();
+            state->binaryMatrix[i][j] = walkable ? 1 : 0;
+        }
+    }
+    state->grid->cleanHighlights();
+    SDL_Point currentEnd = state->grid->convertCoordinateToIndex(x, y);
+    std::vector<SDL_Point> path = bfs(state->binaryMatrix, {0, 0}, currentEnd);
+
+    for (int i = 0; i < path.size(); i++)
+    {
+        state->grid->setHighlight(path[i].x, path[i].y, true);
+    }
 }
 
 SDL_AppResult SDL_AppIterate(void* appstate)
@@ -113,7 +154,8 @@ SDL_AppResult SDL_AppIterate(void* appstate)
         if (mouseX < WINDOW_WIDTH && mouseX > 0 && mouseY < WINDOW_HEIGHT && mouseY > 0)
         {
             // std::cout << "Mouse X: " << mouseX << " Mouse Y: " << mouseY << std::endl;
-            state->grid->setType(mouseX, mouseY, TileType::WALL);
+            // state->grid->setType(mouseX, mouseY, TileType::WALL);
+            state->grid->setSpriteType(mouseX, mouseY, SpriteType::TREE);
         }
     }
     if (mouseButton == SDL_BUTTON_X1)
@@ -121,7 +163,14 @@ SDL_AppResult SDL_AppIterate(void* appstate)
         if (mouseX < WINDOW_WIDTH && mouseX > 0 && mouseY < WINDOW_HEIGHT && mouseY > 0)
         {
             state->grid->setType(mouseX, mouseY, TileType::FLOOR);
+            state->grid->setSpriteType(mouseX, mouseY, SpriteType::NONE);
         }
+    }
+
+
+    if (state->trackMouse)
+    {
+        do_work(state, mouseX, mouseY);
     }
 
     state->grid->draw(renderer, WINDOW_WIDTH, WINDOW_HEIGHT);
