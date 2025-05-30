@@ -1,192 +1,220 @@
 #define SDL_MAIN_USE_CALLBACKS 1
 
+#include "bfs.h"
+#include "grid.h"
+#include "textureManager.h"
+#include <iostream>
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_mouse.h>
-#include <grid.h>
-#include <iostream>
-#include <textureManager.h>
-#include <bfs.h>
 
 static SDL_Window* window = nullptr;
 static SDL_Renderer* renderer = nullptr;
 
-#define WINDOW_WIDTH 800
-#define WINDOW_HEIGHT 800
-#define CELL_SIZE 40
+constexpr int WINDOW_WIDTH = 800;
+constexpr int WINDOW_HEIGHT = 800;
+constexpr int CELL_SIZE = 16;
 
 typedef struct AppState
 {
-    Grid* grid;
-    std::vector<std::vector<int>> binaryMatrix;
-    bool trackMouse = false;
+	Grid* grid;
+	std::vector<std::vector<int>> binaryMatrix;
+	bool trackMouse = false;
+	TileType currentTileType = TileType::FLOOR;
+	SpriteType currentSpriteType = SpriteType::NONE;
+	SDL_Point pathStart = { 0, 0 };
+	SDL_Point pathEnd = { 0, 0 };
+	int pathSteps = 0;
+	float mouseX, mouseY;
+
 } AppState;
+
+void updateBinaryMatrix(AppState* state);
+static void highlightPath(AppState* state, const std::vector<SDL_Point>& path);
+void do_work(AppState* state);
 
 SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
 {
-    if (!SDL_Init(SDL_INIT_VIDEO))
-    {
-        SDL_Log("Couldn't initialize SDL: %s", SDL_GetError());
-        return SDL_APP_FAILURE;
-    }
+	if (!SDL_Init(SDL_INIT_VIDEO))
+	{
+		SDL_Log("Couldn't initialize SDL: %s", SDL_GetError());
+		return SDL_APP_FAILURE;
+	}
 
-    if (!SDL_CreateWindowAndRenderer("Sdl Grid", WINDOW_WIDTH, WINDOW_HEIGHT, 0, &window, &renderer))
-    {
-        SDL_Log("Couldn't create window/renderer: %s", SDL_GetError());
-        return SDL_APP_FAILURE;
-    }
+	if (!SDL_CreateWindowAndRenderer("Sdl Grid", WINDOW_WIDTH, WINDOW_HEIGHT, 0, &window, &renderer))
+	{
+		SDL_Log("Couldn't create window/renderer: %s", SDL_GetError());
+		return SDL_APP_FAILURE;
+	}
 
-    // int col = WINDOW_WIDTH / CELL_SIZE;
-    // int row = WINDOW_HEIGHT / CELL_SIZE;
-    int col = 20;
-    int row = 20;
+	// int col = WINDOW_WIDTH / CELL_SIZE;
+	// int row = WINDOW_HEIGHT / CELL_SIZE;
+	int col = 20;
+	int row = 20;
 
-    AppState* state = new AppState;
+	int scaledCellWidth = WINDOW_WIDTH / col;
+	int scaledCellHeight = WINDOW_HEIGHT / row;
+	int scaledCellSize = std::min(scaledCellWidth, scaledCellHeight);
 
-    SDL_Texture* spriteSheet = TextureManager::getInstance()->loadTexture(renderer, "assets/Textures-16.png");
+	AppState* state = new AppState;
 
-    state->grid = new Grid(col, row, CELL_SIZE, spriteSheet);
+	SDL_Texture* spriteSheet = TextureManager::getInstance()->loadTexture(renderer, "assets/textures.png");
 
-    *appstate = state;
+	state->grid = new Grid(col, row, scaledCellSize, spriteSheet);
 
-    const std::vector<std::vector<int>> binaryMatrix(row, std::vector<int>(col, 0));
-    state->binaryMatrix = binaryMatrix;
+	*appstate = state;
+
+	const std::vector<std::vector<int>> binaryMatrix(row, std::vector<int>(col, 0));
+	state->binaryMatrix = binaryMatrix;
 
 
-    return SDL_APP_CONTINUE;
+	return SDL_APP_CONTINUE;
 }
 
 SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event)
 {
-    AppState* state = (AppState*)appstate;
+	AppState* state = (AppState*)appstate;
 
-    if (event->type == SDL_EVENT_QUIT)
-    {
-        return SDL_APP_SUCCESS;
-    }
+	if (event->type == SDL_EVENT_QUIT)
+	{
+		return SDL_APP_SUCCESS;
+	}
 
-    if (event->type == SDL_EVENT_KEY_DOWN && event->key.repeat == 0)
-    {
-        if (event->key.scancode == SDL_SCANCODE_ESCAPE)
-        {
-            // TODO Check if this is correct and if its running all the memory cleaning
-            return SDL_APP_SUCCESS;
-        }
-    }
 
-    if (event->type == SDL_EVENT_KEY_DOWN && event->key.repeat == 0)
-    {
-        if (event->key.scancode == SDL_SCANCODE_T)
-        {
-            state->trackMouse = !state->trackMouse;
-            state->grid->cleanHighlights();
-        }
-    }
 
-    if (event->type == SDL_EVENT_KEY_DOWN && event->key.repeat == 0)
-    {
-        if (event->key.scancode == SDL_SCANCODE_G)
-        {
-            state->grid->showGrid();
-        }
-    }
-    if (event->type == SDL_EVENT_KEY_DOWN && event->key.repeat == 0)
-    {
-        if (event->key.scancode == SDL_SCANCODE_X)
-        {
-            const std::vector<std::vector<Tile>> test = state->grid->getTiles();
-            for (int i = 0; i < test.size(); i++)
-            {
-                for (int j = 0; j < test[i].size(); j++)
-                {
-                    bool walkable = test[i][j].isWalkable();
-                    state->binaryMatrix[i][j] = walkable ? 1 : 0;
-                }
-            }
-            state->grid->cleanHighlights();
-            std::vector<SDL_Point> path = bfs(state->binaryMatrix);
+	if (event->type == SDL_EVENT_KEY_DOWN && event->key.repeat == 0)
+	{
+		std::vector<SDL_Point> path;
+		SDL_Point currentIndexPosition = state->grid->convertCoordinateToIndex(state->mouseX, state->mouseY);
 
-            for (int i = 0; i < path.size(); i++)
-            {
-                state->grid->setHighlight(path[i].x, path[i].y, true);
-            }
-        }
-    }
 
-    return SDL_APP_CONTINUE;
+		switch (event->key.scancode)
+		{
+		case SDL_SCANCODE_ESCAPE:
+			return SDL_APP_SUCCESS;
+		case SDL_SCANCODE_T:
+			state->trackMouse = !state->trackMouse;
+			state->grid->cleanHighlights();
+			break;
+		case SDL_SCANCODE_G:
+			state->grid->showGrid();
+			break;
+		case SDL_SCANCODE_X:
+			std::cout << state->pathStart.x << "," << state->pathStart.y << std::endl;
+			std::cout << state->pathEnd.x << "," << state->pathEnd.y << std::endl;
+
+			/*updateBinaryMatrix(state);
+			path = bfs(state->binaryMatrix, state->pathStart, state->pathEnd);
+			highlightPath(state, path);*/
+			do_work(state);
+			break;
+		case SDL_SCANCODE_1:
+			state->currentTileType = TileType::WALL;
+			break;
+		case SDL_SCANCODE_2:
+			state->currentTileType = TileType::FLOOR;
+			break;
+
+		case SDL_SCANCODE_S:
+			state->grid->setSpriteType(state->pathStart, SpriteType::NONE);
+			state->grid->setSpriteType(currentIndexPosition, SpriteType::TICKET);
+			state->pathStart = state->grid->convertCoordinateToIndex(state->mouseX, state->mouseY);
+			break;
+		case SDL_SCANCODE_E:
+			state->grid->setSpriteType(state->pathEnd, SpriteType::NONE);
+			state->grid->setSpriteType(currentIndexPosition, SpriteType::X);
+			state->pathEnd = state->grid->convertCoordinateToIndex(state->mouseX, state->mouseY);
+			break;
+		}
+	}
+
+	return SDL_APP_CONTINUE;
 }
 
+static void highlightPath(AppState* state, const std::vector<SDL_Point>& path) {
+	state->grid->cleanHighlights();
 
-void do_work(AppState* state, const float x, const float y)
+	for (const SDL_Point& point : path) {
+		state->grid->setHighlight(point.x, point.y, true);
+		//state->grid->setHighlight(point.x, point.y, true, HighlightColor::BLUE);
+	}
+
+}
+
+void updateBinaryMatrix(AppState* state) {
+	const std::vector<std::vector<Tile>> test = state->grid->getTiles();
+	for (int i = 0; i < test.size(); i++)
+	{
+		for (int j = 0; j < test[i].size(); j++)
+		{
+			bool walkable = test[i][j].isWalkable();
+			state->binaryMatrix[i][j] = walkable ? 1 : 0;
+		}
+	}
+}
+
+void do_work(AppState* state)
 {
-    const std::vector<std::vector<Tile>> test = state->grid->getTiles();
-    for (int i = 0; i < test.size(); i++)
-    {
-        for (int j = 0; j < test[i].size(); j++)
-        {
-            bool walkable = test[i][j].isWalkable();
-            state->binaryMatrix[i][j] = walkable ? 1 : 0;
-        }
-    }
-    state->grid->cleanHighlights();
-    SDL_Point currentEnd = state->grid->convertCoordinateToIndex(x, y);
-    std::vector<SDL_Point> path = bfs(state->binaryMatrix, {0, 0}, currentEnd);
+	updateBinaryMatrix(state);
 
-    for (int i = 0; i < path.size(); i++)
-    {
-        state->grid->setHighlight(path[i].x, path[i].y, true);
-    }
+	std::vector<SDL_Point> path = bfs(
+		state->binaryMatrix,
+		state->pathStart,
+		state->pathEnd
+	);
+
+	highlightPath(state, path);
 }
 
 SDL_AppResult SDL_AppIterate(void* appstate)
 {
-    AppState* state = (AppState*)appstate;
+	AppState* state = (AppState*)appstate;
 
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
-    SDL_RenderClear(renderer);
+	SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
+	SDL_RenderClear(renderer);
 
-    float mouseX, mouseY;
-    Uint32 mouseButton = SDL_GetMouseState(&mouseX, &mouseY);
-    const bool* keys = SDL_GetKeyboardState(NULL);
+	//float mouseX, mouseY;
+	Uint32 mouseButton = SDL_GetMouseState(&state->mouseX, &state->mouseY);
+	const bool* keys = SDL_GetKeyboardState(NULL);
 
-    if (mouseButton == SDL_BUTTON_LEFT)
-    {
-        if (mouseX < WINDOW_WIDTH && mouseX > 0 && mouseY < WINDOW_HEIGHT && mouseY > 0)
-        {
-            // std::cout << "Mouse X: " << mouseX << " Mouse Y: " << mouseY << std::endl;
-            // state->grid->setType(mouseX, mouseY, TileType::WALL);
-            state->grid->setSpriteType(mouseX, mouseY, SpriteType::TREE);
-        }
-    }
-    if (mouseButton == SDL_BUTTON_X1)
-    {
-        if (mouseX < WINDOW_WIDTH && mouseX > 0 && mouseY < WINDOW_HEIGHT && mouseY > 0)
-        {
-            state->grid->setType(mouseX, mouseY, TileType::FLOOR);
-            state->grid->setSpriteType(mouseX, mouseY, SpriteType::NONE);
-        }
-    }
+	if (state->mouseX < WINDOW_WIDTH && state->mouseX > 0 && state->mouseY < WINDOW_HEIGHT && state->mouseY > 0)
+	{
+		SDL_Point currentIndexPosition = state->grid->convertCoordinateToIndex(state->mouseX, state->mouseY);
 
 
-    if (state->trackMouse)
-    {
-        do_work(state, mouseX, mouseY);
-    }
+		switch (mouseButton) {
+		case SDL_BUTTON_LEFT:
+			//state->grid->setSpriteType(mouseX, mouseY, state->currentSpriteType);
+			state->grid->setType(state->mouseX, state->mouseY, state->currentTileType);
+			break;
+		case SDL_BUTTON_X1:
+			state->grid->setType(state->mouseX, state->mouseY, state->currentTileType);
+			state->grid->setSpriteType(currentIndexPosition, state->currentSpriteType);
+			break;
+		}
+	}
 
-    state->grid->draw(renderer, WINDOW_WIDTH, WINDOW_HEIGHT);
 
-    SDL_RenderPresent(renderer);
+	if (state->trackMouse)
+	{
+		state->pathEnd = state->grid->convertCoordinateToIndex(state->mouseX, state->mouseY);
+		do_work(state);
+	}
 
-    return SDL_APP_CONTINUE;
+	state->grid->draw(renderer, WINDOW_WIDTH, WINDOW_HEIGHT);
+
+	SDL_RenderPresent(renderer);
+
+	return SDL_APP_CONTINUE;
 }
 
 void SDL_AppQuit(void* appstate, SDL_AppResult result)
 {
-    AppState* state = (AppState*)appstate;
-    delete state->grid;
-    delete state;
-    delete (AppState*)appstate;
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
-    SDL_Quit();
+	AppState* state = (AppState*)appstate;
+	delete state->grid;
+	delete state;
+	delete (AppState*)appstate;
+	SDL_DestroyRenderer(renderer);
+	SDL_DestroyWindow(window);
+	SDL_Quit();
 }

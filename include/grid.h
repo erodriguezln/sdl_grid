@@ -3,7 +3,7 @@
 
 #include <SDL3/SDL.h>
 #include <vector>
-#include <tile.h>
+#include "tile.h"
 
 class Grid
 {
@@ -26,7 +26,7 @@ public:
 
     void setType(float x, float y, TileType type);
 
-    void setSpriteType(float x, float y, SpriteType type);
+    void setSpriteType(const SDL_Point &position, SpriteType type);
 
     bool isWalkable(int x, int y) const;
 

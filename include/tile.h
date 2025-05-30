@@ -13,13 +13,14 @@ enum class TileType
 {
     FLOOR,
     WALL,
-};
+  };
 
 enum class SpriteType
 {
-    TREE,
+    TICKET,
+    X,
     NONE
-};
+  };
 
 class Tile
 {
